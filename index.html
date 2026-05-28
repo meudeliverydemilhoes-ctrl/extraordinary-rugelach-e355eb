@@ -2339,14 +2339,14 @@ async function markAsRead(jid) {
     // Tenta endpoint v2 do Evolution API
     await evoFetch('/chat/markMessageAsRead/{inst}', {
       method: 'PUT',
-      body: { readMessages: [{ remoteJid: jid }] }
+      body: { readMessages: [{ id: "true", fromMe: true, remoteJid: jid }] }
     });
   } catch(e) {
     // Fallback: tenta endpoint alternativo
     try {
       await evoFetch('/chat/markMessageAsRead/{inst}', {
         method: 'POST',
-        body: { readMessages: [{ remoteJid: jid }] }
+        body: { readMessages: [{ id: "true", fromMe: true, remoteJid: jid }] }
       });
     } catch(e2) {
       console.warn('[MeuCRM] markAsRead falhou (nao-critico):', e2.message);
