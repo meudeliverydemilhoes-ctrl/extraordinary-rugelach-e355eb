@@ -5840,7 +5840,61 @@ function flowCheckPending() {
 }
 
 // Auto-trigger: new contact
+
+// ============ ENRIQUECER LEADS DO FACEBOOK ============
+async function enrichFacebookLead(jid) {
+  // Tenta obter foto do contato via Evolution API
+  try {
+    var contactResp = await evoFetch('/chat/findContacts/{inst}', { 
+      method: 'POST', 
+      body: { where: { remoteJid: jid } } 
+    });
+    if (contactResp && contactResp.length > 0) {
+      var contact = contactResp[0];
+      if (contact.profilePicUrl) {
+        // Atualizar foto no chat
+        var chat = (state.chats || []).find(c => c.remoteJid === jid);
+        if (chat) chat.profilePicUrl = contact.profilePicUrl;
+      }
+      if (contact.pushName) {
+        // Atualizar nome no chat
+        var chat = (state.chats || []).find(c => c.remoteJid === jid);
+        if (chat) chat.pushName = contact.pushName;
+      }
+    }
+  } catch(e) {
+    console.warn('[MeuCRM] enrichFacebookLead falhou:', e.message);
+  }
+  
+  // Se ainda não tem nome, solicitar ao lead
+  var chat = (state.chats || []).find(c => c.remoteJid === jid);
+  if (!chat || !chat.pushName || !chat.pushName.trim()) {
+    try {
+      await sendText(jid, 'Olá! 👋 Para melhor atendimento, qual seu nome completo e telefone?');
+    } catch(e) {
+      console.warn('[MeuCRM] Erro ao solicitar dados do lead:', e.message);
+    }
+  }
+}
+
+// Chamar quando novo contato é criado
+async function flowTriggerNewContactEnhanced(jid) {
+  // Enriquecer dados do lead
+  if (jid.endsWith('@lid')) {
+    await enrichFacebookLead(jid);
+  }
+  
+  // Chamar função original
+  flowTriggerNewContact(jid);
+}
+
+
 function flowTriggerNewContact(jid) {
+  // Enriquecer leads do Facebook
+  if (jid.endsWith('@lid')) {
+    enrichFacebookLead(jid);
+  }
+  
   loadFlows();
   var changed = false;
   _flows.forEach(function(f) {
