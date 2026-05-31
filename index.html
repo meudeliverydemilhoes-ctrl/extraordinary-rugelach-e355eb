@@ -5850,10 +5850,16 @@ function flowTriggerNewContact(jid) {
     if (already) return;
     if (!f.contacts) f.contacts = [];
     var _chat = (state.chats || []).find(function(c) { return c.remoteJid === jid; });
-    var contact = _chat ? { jid: jid, name: _chat.pushName || jid.split('@')[0] } : null;
+    var _contact = (state.contacts || []).find(function(c) { return c.remoteJid === jid; });
+    var contactName = _chat ? (_chat.pushName || '') : (_contact ? (_contact.pushName || '') : '');
+    var leadId = jid.split('@')[0];
+    var displayName = contactName.trim() || (jid.endsWith('@lid') ? 'Lead #' + leadId : leadId);
+    
     f.contacts.push({
       jid: jid,
-      name: contact ? contact.name : jid.split('@')[0],
+      name: displayName,
+      leadId: leadId,
+      isFacebookLead: jid.endsWith('@lid'),
       status: 'active',
       currentStep: 0,
       startedAt: Date.now(),
