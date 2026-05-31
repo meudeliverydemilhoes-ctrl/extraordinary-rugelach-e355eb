@@ -2312,6 +2312,10 @@ function extractMedia(message, messageType) {
    ACTIONS
    ========================================================= */
 function openChat(jid) {
+  // Carregar mensagens imediatamente (não esperar polling)
+  loadMessages(jid);
+  loadChats();
+
   state.selectedJid = jid;
   state.messages = [];
   state._chatRenderedJid = null;  // forca rebuild completo do chat
@@ -5840,8 +5844,65 @@ function flowCheckPending() {
 }
 
 // Auto-trigger: new contact
+
+
+
+// ============ EXTRAIR DADOS REAIS DO LEAD DO FACEBOOK ============
+// Evolution API fornece: profilePicUrl, pushName, e pode ter remoteJidAlt com número real
+function extractLeadData(jid, message) {
+  var data = {
+    jid: jid,
+    name: null,
+    phone: null,
+    photo: null,
+    isFacebookLead: jid.endsWith('@lid')
+  };
+  
+  // Tentar extrair do chat existente
+  var chat = (state.chats || []).find(c => c.remoteJid === jid);
+  if (chat) {
+    if (chat.pushName && chat.pushName.trim()) {
+      data.name = chat.pushName.trim();
+    }
+    if (chat.profilePicUrl) {
+      data.photo = chat.profilePicUrl;
+    }
+  }
+  
+  // Tentar extrair do contato
+  var contact = (state.contacts || []).find(c => c.remoteJid === jid);
+  if (contact) {
+    if (!data.name && contact.pushName && contact.pushName.trim()) {
+      data.name = contact.pushName.trim();
+    }
+    if (!data.photo && contact.profilePicUrl) {
+      data.photo = contact.profilePicUrl;
+    }
+  }
+  
+  // Extrair número do JID
+  var leadId = jid.split('@')[0];
+  data.phone = leadId;
+  
+  // Se for @lid, tentar encontrar o número real via linkedJids
+  if (jid.endsWith('@lid') && chat && chat.linkedJids) {
+    var realJid = chat.linkedJids.find(j => j.endsWith('@s.whatsapp.net'));
+    if (realJid) {
+      data.phone = realJid.split('@')[0];
+    }
+  }
+  
+  // Se ainda não tem nome, usar ID do lead
+  if (!data.name) {
+    data.name = 'Lead #' + leadId;
+  }
+  
+  return data;
+}
+
+
 function flowTriggerNewContact(jid) {
-  loadFlows();
+loadFlows();
   var changed = false;
   _flows.forEach(function(f) {
     if (!f.active || f.trigger !== 'new_contact') return;
@@ -5850,10 +5911,16 @@ function flowTriggerNewContact(jid) {
     if (already) return;
     if (!f.contacts) f.contacts = [];
     var _chat = (state.chats || []).find(function(c) { return c.remoteJid === jid; });
-    var contact = _chat ? { jid: jid, name: _chat.pushName || jid.split('@')[0] } : null;
+    var _contact = (state.contacts || []).find(function(c) { return c.remoteJid === jid; });
+    var contactName = _chat ? (_chat.pushName || '') : (_contact ? (_contact.pushName || '') : '');
+    var leadId = jid.split('@')[0];
+    var displayName = contactName.trim() || (jid.endsWith('@lid') ? 'Lead #' + leadId : leadId);
+    
     f.contacts.push({
       jid: jid,
-      name: contact ? contact.name : jid.split('@')[0],
+      name: displayName,
+      leadId: leadId,
+      isFacebookLead: jid.endsWith('@lid'),
       status: 'active',
       currentStep: 0,
       startedAt: Date.now(),
@@ -6025,7 +6092,7 @@ async function flowPollTriggers() {
 }
 
 // Poll for triggers every 20 seconds
-setInterval(flowPollTriggers, 20000);
+setInterval(flowPollTriggers, 5000);  // 5s: detectar mensagens mais rápido
 
 
 // Fireflies.ai GraphQL API integration
@@ -6700,7 +6767,7 @@ async function init() {
     }
   }
   if (state.convPoller) clearInterval(state.convPoller);
-  state.convPoller = setInterval(loadChats, 30000);  // 30s: menos updates = zero pulo
+  state.convPoller = setInterval(loadChats, 10000);  // 10s: detectar novos contatos mais rápido
   setInterval(checkConnection, 30000);
   // Init sales machine features
   tagRenderFilterBar();
