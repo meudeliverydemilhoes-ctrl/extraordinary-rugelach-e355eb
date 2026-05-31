@@ -5892,6 +5892,16 @@ function extractLeadData(jid, message) {
     }
   }
   
+  // Se for @lid e ainda não tem número real, tentar extrair da mensagem
+  if (jid.endsWith('@lid') && message) {
+    // Procurar por participant ou remoteJid na mensagem
+    if (message.participant && message.participant.endsWith('@s.whatsapp.net')) {
+      data.phone = message.participant.split('@')[0];
+    } else if (message.key && message.key.participant && message.key.participant.endsWith('@s.whatsapp.net')) {
+      data.phone = message.key.participant.split('@')[0];
+    }
+  }
+  
   // Se ainda não tem nome, usar ID do lead
   if (!data.name) {
     data.name = 'Lead #' + leadId;
@@ -5901,7 +5911,7 @@ function extractLeadData(jid, message) {
 }
 
 
-function flowTriggerNewContact(jid) {
+function flowTriggerNewContact(jid, message) {
 loadFlows();
   var changed = false;
   _flows.forEach(function(f) {
@@ -6075,7 +6085,7 @@ async function flowPollTriggers() {
       // New contact trigger
       if (hasNewContact && !_flowPollState.knownJids[jid]) {
         _flowPollState.knownJids[jid] = true;
-        flowTriggerNewContact(jid);
+        flowTriggerNewContact(jid, m);
       }
 
       // Keyword trigger
