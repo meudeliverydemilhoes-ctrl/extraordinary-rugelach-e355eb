@@ -5841,61 +5841,64 @@ function flowCheckPending() {
 
 // Auto-trigger: new contact
 
-// ============ ENRIQUECER LEADS DO FACEBOOK ============
-async function enrichFacebookLead(jid) {
-  // Tenta obter foto do contato via Evolution API
-  try {
-    var contactResp = await evoFetch('/chat/findContacts/{inst}', { 
-      method: 'POST', 
-      body: { where: { remoteJid: jid } } 
-    });
-    if (contactResp && contactResp.length > 0) {
-      var contact = contactResp[0];
-      if (contact.profilePicUrl) {
-        // Atualizar foto no chat
-        var chat = (state.chats || []).find(c => c.remoteJid === jid);
-        if (chat) chat.profilePicUrl = contact.profilePicUrl;
-      }
-      if (contact.pushName) {
-        // Atualizar nome no chat
-        var chat = (state.chats || []).find(c => c.remoteJid === jid);
-        if (chat) chat.pushName = contact.pushName;
-      }
-    }
-  } catch(e) {
-    console.warn('[MeuCRM] enrichFacebookLead falhou:', e.message);
-  }
-  
-  // Se ainda não tem nome, solicitar ao lead
-  var chat = (state.chats || []).find(c => c.remoteJid === jid);
-  if (!chat || !chat.pushName || !chat.pushName.trim()) {
-    try {
-      await sendText(jid, 'Olá! 👋 Para melhor atendimento, qual seu nome completo e telefone?');
-    } catch(e) {
-      console.warn('[MeuCRM] Erro ao solicitar dados do lead:', e.message);
-    }
-  }
-}
 
-// Chamar quando novo contato é criado
-async function flowTriggerNewContactEnhanced(jid) {
-  // Enriquecer dados do lead
-  if (jid.endsWith('@lid')) {
-    await enrichFacebookLead(jid);
+
+// ============ EXTRAIR DADOS REAIS DO LEAD DO FACEBOOK ============
+// Evolution API fornece: profilePicUrl, pushName, e pode ter remoteJidAlt com número real
+function extractLeadData(jid, message) {
+  var data = {
+    jid: jid,
+    name: null,
+    phone: null,
+    photo: null,
+    isFacebookLead: jid.endsWith('@lid')
+  };
+  
+  // Tentar extrair do chat existente
+  var chat = (state.chats || []).find(c => c.remoteJid === jid);
+  if (chat) {
+    if (chat.pushName && chat.pushName.trim()) {
+      data.name = chat.pushName.trim();
+    }
+    if (chat.profilePicUrl) {
+      data.photo = chat.profilePicUrl;
+    }
   }
   
-  // Chamar função original
-  flowTriggerNewContact(jid);
+  // Tentar extrair do contato
+  var contact = (state.contacts || []).find(c => c.remoteJid === jid);
+  if (contact) {
+    if (!data.name && contact.pushName && contact.pushName.trim()) {
+      data.name = contact.pushName.trim();
+    }
+    if (!data.photo && contact.profilePicUrl) {
+      data.photo = contact.profilePicUrl;
+    }
+  }
+  
+  // Extrair número do JID
+  var leadId = jid.split('@')[0];
+  data.phone = leadId;
+  
+  // Se for @lid, tentar encontrar o número real via linkedJids
+  if (jid.endsWith('@lid') && chat && chat.linkedJids) {
+    var realJid = chat.linkedJids.find(j => j.endsWith('@s.whatsapp.net'));
+    if (realJid) {
+      data.phone = realJid.split('@')[0];
+    }
+  }
+  
+  // Se ainda não tem nome, usar ID do lead
+  if (!data.name) {
+    data.name = 'Lead #' + leadId;
+  }
+  
+  return data;
 }
 
 
 function flowTriggerNewContact(jid) {
-  // Enriquecer leads do Facebook
-  if (jid.endsWith('@lid')) {
-    enrichFacebookLead(jid);
-  }
-  
-  loadFlows();
+loadFlows();
   var changed = false;
   _flows.forEach(function(f) {
     if (!f.active || f.trigger !== 'new_contact') return;
