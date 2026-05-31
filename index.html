@@ -2312,6 +2312,10 @@ function extractMedia(message, messageType) {
    ACTIONS
    ========================================================= */
 function openChat(jid) {
+  // Carregar mensagens imediatamente (não esperar polling)
+  loadMessages(jid);
+  loadChats();
+
   state.selectedJid = jid;
   state.messages = [];
   state._chatRenderedJid = null;  // forca rebuild completo do chat
@@ -6088,7 +6092,7 @@ async function flowPollTriggers() {
 }
 
 // Poll for triggers every 20 seconds
-setInterval(flowPollTriggers, 20000);
+setInterval(flowPollTriggers, 5000);  // 5s: detectar mensagens mais rápido
 
 
 // Fireflies.ai GraphQL API integration
@@ -6763,7 +6767,7 @@ async function init() {
     }
   }
   if (state.convPoller) clearInterval(state.convPoller);
-  state.convPoller = setInterval(loadChats, 30000);  // 30s: menos updates = zero pulo
+  state.convPoller = setInterval(loadChats, 10000);  // 10s: detectar novos contatos mais rápido
   setInterval(checkConnection, 30000);
   // Init sales machine features
   tagRenderFilterBar();
