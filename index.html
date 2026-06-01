@@ -2302,8 +2302,18 @@ function extractText(message) {
 
 function extractMedia(message, messageType) {
   var out = { img: null, audio: null, file: null };
+  // Procurar imagem em múltiplos locais
   if (message.imageMessage && message.imageMessage.url) out.img = message.imageMessage.url;
+  else if (message.image) out.img = message.image;
+  else if (message.message && message.message.imageMessage && message.message.imageMessage.url) out.img = message.message.imageMessage.url;
+  else if (message.message && message.message.image) out.img = message.message.image;
+  // Procurar áudio em múltiplos locais
   else if (message.audioMessage && message.audioMessage.url) out.audio = message.audioMessage.url;
+  else if (message.audio) out.audio = message.audio;
+  else if (message.message && message.message.audioMessage && message.message.audioMessage.url) out.audio = message.message.audioMessage.url;
+  else if (message.pttMessage && message.pttMessage.url) out.audio = message.pttMessage.url;
+  else if (message.message && message.message.pttMessage && message.message.pttMessage.url) out.audio = message.message.pttMessage.url;
+  // Procurar documento
   else if (message.documentMessage) out.file = message.documentMessage.fileName || message.documentMessage.title || 'arquivo';
   return out;
 }
