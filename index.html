@@ -7687,10 +7687,13 @@ if (document.readyState === 'loading') {
         sb.from('crm_kv').upsert({key:key,value:val,updated_at:new Date().toISOString()}).then(function(){},function(){});
       }catch(e){}
     };
-    [['saveTags','meucrm_tags'],['saveContactTags','meucrm_contact_tags'],['saveDealValues','meucrm_deal_values'],['saveNotes','meucrm_hs_notes'],['savePipeManual','meucrm_pipe_manual'],['saveFollowups','meucrm_followups']].forEach(function(p){
-      var fn=p[0], key=p[1];
-      if(typeof window[fn]==='function'){ var orig=window[fn]; window[fn]=function(){ var r=orig.apply(this,arguments); window._sbKvUpsert(key); return r; }; }
-    });
+    (function(){
+      var SYNC_KEYS={'meucrm_tags':1,'meucrm_contact_tags':1,'meucrm_deal_values':1,'meucrm_hs_notes':1,'meucrm_pipe_manual':1,'meucrm_followups':1};
+      try{
+        var _origSet=localStorage.setItem.bind(localStorage);
+        localStorage.setItem=function(k,v){ var r=_origSet(k,v); try{ if(SYNC_KEYS[k]&&typeof window._sbKvUpsert==='function') window._sbKvUpsert(k); }catch(e){} return r; };
+      }catch(e){}
+    })();
     sb.from('crm_kv').select('key,value').then(function(res){
       try{ if(res&&res.data){
         res.data.forEach(function(row){ if(row.value!=null) localStorage.setItem(row.key, JSON.stringify(row.value)); });
