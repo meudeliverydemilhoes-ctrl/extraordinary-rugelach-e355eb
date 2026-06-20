@@ -161,6 +161,12 @@
   .lead-status-btn.ls-comprou { background:var(--acc); color:#fff; }
   .lead-status-btn.ls-naocomprou { background:var(--danger); color:#fff; }
   .lead-status-btn.ls-chamar { background:var(--warn); color:#1a1a1a; }
+  .lead-status-tag { display:inline-block; margin-top:3px; padding:2px 9px; border-radius:10px; font-size:11px; font-weight:700; }
+  .lead-status-tag.ls-agendada { background:var(--info); color:#fff; }
+  .lead-status-tag.ls-feita { background:#7c5cff; color:#fff; }
+  .lead-status-tag.ls-comprou { background:var(--acc); color:#fff; }
+  .lead-status-tag.ls-naocomprou { background:var(--danger); color:#fff; }
+  .lead-status-tag.ls-chamar { background:var(--warn); color:#1a1a1a; }
   @media (max-width:600px) {
     .nav { -webkit-overflow-scrolling:touch; gap:2px; }
     .nav::-webkit-scrollbar { display:none; }
@@ -2188,6 +2194,7 @@ function renderConvs() {
       + '<div class="avatar">' + avatar + '</div>'
       + '<div class="conv-body">'
       +   '<div class="conv-row1"><div class="conv-name">' + escapeHtml(d.name) + '</div><div class="conv-time">' + d.time + '</div></div>'
+      +   leadStatusTagHtml(d.jid)
       +   '<div class="conv-row1"><div class="conv-last">' + escapeHtml(d.last) + '</div>' + (d.unread > 0 ? '<span class="conv-unread">' + d.unread + '</span>' : '') + '</div>'
       +   tagsHtml
       + '</div></div>';
@@ -2808,6 +2815,12 @@ function leadStatusBtnHtml(jid){
   var meta = leadStatusMeta(getLeadStatusKey(jid));
   return '<button class="btn lead-status-btn '+meta.cls+'" data-ls-jid="'+escapeHtml(jid)+'" onclick="cycleLeadStatus(\''+escapeJS(jid)+'\')" title="Clique para mudar o status do lead">'+escapeHtml(meta.label)+'</button>';
 }
+function leadStatusTagHtml(jid){
+  var key=getLeadStatusKey(jid);
+  if(!key) return '';
+  var meta=leadStatusMeta(key);
+  return '<span class="lead-status-tag '+meta.cls+'">'+escapeHtml(meta.label)+'</span>';
+}
 function cycleLeadStatus(jid){
   var m = loadLeadStatus();
   var cur = m[jid] || '';
@@ -2817,6 +2830,12 @@ function cycleLeadStatus(jid){
   saveLeadStatus(m);
   var sel='.lead-status-btn[data-ls-jid="'+(window.CSS&&CSS.escape?CSS.escape(jid):jid)+'"]';
   document.querySelectorAll(sel).forEach(function(b){ b.outerHTML = leadStatusBtnHtml(jid); });
+  try {
+    var item=document.querySelector('.conv-item[data-jid="'+(window.CSS&&CSS.escape?CSS.escape(jid):jid)+'"]');
+    if(item){ var et=item.querySelector('.lead-status-tag'); var nh=leadStatusTagHtml(jid);
+      if(et){ if(nh) et.outerHTML=nh; else et.remove(); }
+      else if(nh){ var fr=item.querySelector('.conv-row1'); if(fr) fr.insertAdjacentHTML('afterend', nh); } }
+  } catch(e){}
   try { toast('Status: ' + next.label, 'ok'); } catch(e){}
 }
 function goToPipelineCard(jid){
