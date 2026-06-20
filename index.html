@@ -7681,6 +7681,26 @@ if (document.readyState === 'loading') {
         else sb.from('crm_lead_status').delete().eq('jid',jid).then(function(){},function(){});
       }catch(e){}
     };
+    // ---- crm_kv: etiquetas, contact_tags e valores de negocio ----
+    window._sbKvUpsert=function(key){
+      try{ var raw=localStorage.getItem(key); var val=raw?JSON.parse(raw):null;
+        sb.from('crm_kv').upsert({key:key,value:val,updated_at:new Date().toISOString()}).then(function(){},function(){});
+      }catch(e){}
+    };
+    [['saveTags','meucrm_tags'],['saveContactTags','meucrm_contact_tags'],['saveDealValues','meucrm_deal_values']].forEach(function(p){
+      var fn=p[0], key=p[1];
+      if(typeof window[fn]==='function'){ var orig=window[fn]; window[fn]=function(){ var r=orig.apply(this,arguments); window._sbKvUpsert(key); return r; }; }
+    });
+    sb.from('crm_kv').select('key,value').then(function(res){
+      try{ if(res&&res.data){
+        res.data.forEach(function(row){ if(row.value!=null) localStorage.setItem(row.key, JSON.stringify(row.value)); });
+        if(typeof loadTags==='function') loadTags();
+        if(typeof loadContactTags==='function') loadContactTags();
+        if(typeof loadDealValues==='function') loadDealValues();
+        if(typeof renderConvs==='function') renderConvs();
+        if(typeof renderPipelinePage==='function' && document.getElementById('pipe-kanban')) renderPipelinePage();
+      } }catch(e){}
+    }, function(){});
     // sync inicial: traz status do banco e mescla no cache local, depois re-renderiza
     sb.from('crm_lead_status').select('jid,status').then(function(res){
       try{
