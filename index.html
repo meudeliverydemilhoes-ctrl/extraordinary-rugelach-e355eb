@@ -149,14 +149,32 @@
   .pipe-col { background:var(--bg2); border-radius:8px; padding:10px; min-height:100px; }
   .pipe-col-title { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--mut); margin-bottom:6px; display:flex; justify-content:space-between; }
   .pipe-col-count { font-weight:700; color:var(--acc); }
-  .pipe-card { background:var(--bg1); padding:8px 10px; border-radius:6px; margin-bottom:4px; font-size:12px; border-left:3px solid var(--acc); }
-  .pipe-card .pipe-name { font-weight:600; margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .pipe-card .pipe-time { color:var(--mut); font-size:10px; }
+  .pipe-card { background:var(--bg1); padding:20px 20px; border-radius:12px; margin-bottom:14px; font-size:16px; border-left:6px solid var(--acc); }
+  .pipe-card .pipe-name { font-weight:700; font-size:18px; margin-bottom:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pipe-card .pipe-time { color:var(--mut); font-size:14px; }
+  .pipe-card.pipe-card-highlight { outline:3px solid var(--acc); box-shadow:0 0 0 4px rgba(0,168,132,.25); animation:pipePulse 1s ease-in-out 2; }
+  @keyframes pipePulse { 0%,100%{ box-shadow:0 0 0 4px rgba(0,168,132,.25);} 50%{ box-shadow:0 0 0 10px rgba(0,168,132,.12);} }
+  .lead-status-btn { font-weight:700; }
+  .lead-status-btn.ls-none { background:var(--bg3); color:var(--mut); }
+  .lead-status-btn.ls-agendada { background:var(--info); color:#fff; }
+  .lead-status-btn.ls-feita { background:#7c5cff; color:#fff; }
+  .lead-status-btn.ls-comprou { background:var(--acc); color:#fff; }
+  .lead-status-btn.ls-naocomprou { background:var(--danger); color:#fff; }
+  .lead-status-btn.ls-chamar { background:var(--warn); color:#1a1a1a; }
+  @media (max-width:600px) {
+    .nav { -webkit-overflow-scrolling:touch; gap:2px; }
+    .nav::-webkit-scrollbar { display:none; }
+    .nav button { min-height:44px; padding:9px 14px; font-size:14px; }
+    .btn { min-height:40px; }
+    input, textarea, select, .field input, .field textarea { font-size:16px; }
+    .kpis, .c-kpis, .c-resumo-grid { grid-template-columns:1fr; }
+    .pipe-kanban .pipe-col { min-width:84vw; max-width:92vw; }
+  }
   .pipe-card .pipe-unread { display:inline-block; background:var(--acc); color:#fff; font-size:9px; font-weight:700; padding:1px 5px; border-radius:8px; margin-left:4px; }
 
   /* Pipeline page kanban */
   .pipe-kanban { display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; }
-  .pipe-kanban .pipe-col { min-width:200px; max-width:260px; flex:1; max-height:60vh; overflow-y:auto; }
+  .pipe-kanban .pipe-col { min-width:340px; max-width:460px; flex:1; max-height:74vh; overflow-y:auto; }
   .pipe-kanban .pipe-col-header { position:sticky; top:0; background:var(--bg2); padding:10px; border-radius:8px 8px 0 0; z-index:2; border-bottom:2px solid var(--acc); }
   .pipe-kanban .pipe-col-header.col-novo { border-bottom-color:var(--info); }
   .pipe-kanban .pipe-col-header.col-ativo { border-bottom-color:var(--acc); }
@@ -2241,6 +2259,8 @@ function renderMessages() {
     + '<div class="avatar" style="width:38px;height:38px;font-size:14px;">' + escapeHtml((name[0]||'?').toUpperCase()) + '</div>'
     + '<div><div class="name">' + escapeHtml(name) + '</div><div class="sub">' + sub + '</div></div>'
     + '<div class="actions">'
+    +   leadStatusBtnHtml(jid)
+    +   '<button class="btn" onclick="goToPipelineCard(\'' + escapeJS(jid) + '\')" title="Ir direto ao card no Pipeline">&#128205; Pipeline</button>'
     +   '<button class="btn" onclick="analyzeConv()">&#129504; Analisar IA</button>'
     + '</div></div>'
     + '<div class="messages" id="messages">' + msgsHtml + '</div>'
@@ -2769,6 +2789,45 @@ function classifyContact(c, now, ms24) {
   if (diff < 7) return 'qualificado';
   if (diff < 14) return 'negociando';
   return 'perdido';
+}
+
+/* ===== Status do lead (botao que cicla) ===== */
+var LEAD_STATUS_LIST = [
+  { key:'',           label:'Definir status',        cls:'ls-none' },
+  { key:'agendada',   label:'📅 Reunião agendada',   cls:'ls-agendada' },
+  { key:'feita',      label:'🎯 Reunião feita',      cls:'ls-feita' },
+  { key:'comprou',    label:'💰 Comprou',            cls:'ls-comprou' },
+  { key:'naocomprou', label:'❌ Não comprou',        cls:'ls-naocomprou' },
+  { key:'chamar',     label:'🔁 Chamar novamente',   cls:'ls-chamar' }
+];
+function loadLeadStatus(){ try{ return JSON.parse(localStorage.getItem('meucrm_lead_status')||'{}'); }catch(e){ return {}; } }
+function saveLeadStatus(m){ localStorage.setItem('meucrm_lead_status', JSON.stringify(m)); }
+function getLeadStatusKey(jid){ return loadLeadStatus()[jid] || ''; }
+function leadStatusMeta(key){ for(var i=0;i<LEAD_STATUS_LIST.length;i++){ if(LEAD_STATUS_LIST[i].key===key) return LEAD_STATUS_LIST[i]; } return LEAD_STATUS_LIST[0]; }
+function leadStatusBtnHtml(jid){
+  var meta = leadStatusMeta(getLeadStatusKey(jid));
+  return '<button class="btn lead-status-btn '+meta.cls+'" data-ls-jid="'+escapeHtml(jid)+'" onclick="cycleLeadStatus(\''+escapeJS(jid)+'\')" title="Clique para mudar o status do lead">'+escapeHtml(meta.label)+'</button>';
+}
+function cycleLeadStatus(jid){
+  var m = loadLeadStatus();
+  var cur = m[jid] || '';
+  var idx = -1; for(var i=0;i<LEAD_STATUS_LIST.length;i++){ if(LEAD_STATUS_LIST[i].key===cur){ idx=i; break; } }
+  var next = LEAD_STATUS_LIST[(idx+1) % LEAD_STATUS_LIST.length];
+  if(next.key==='') delete m[jid]; else m[jid]=next.key;
+  saveLeadStatus(m);
+  var sel='.lead-status-btn[data-ls-jid="'+(window.CSS&&CSS.escape?CSS.escape(jid):jid)+'"]';
+  document.querySelectorAll(sel).forEach(function(b){ b.outerHTML = leadStatusBtnHtml(jid); });
+  try { toast('Status: ' + next.label, 'ok'); } catch(e){}
+}
+function goToPipelineCard(jid){
+  try { showView('pipe'); } catch(e) {}
+  try { renderPipelinePage(); } catch(e) {}
+  setTimeout(function(){
+    var sel='#pipe-kanban .pipe-card[data-jid="'+(window.CSS&&CSS.escape?CSS.escape(jid):jid)+'"]';
+    var card=document.querySelector(sel);
+    if(card){ card.scrollIntoView({behavior:'smooth',block:'center',inline:'center'}); card.classList.add('pipe-card-highlight'); setTimeout(function(){card.classList.remove('pipe-card-highlight');},2800); }
+    else { try{ toast('Esse lead nao esta visivel no Pipeline agora.','info'); }catch(e){} }
+  },400);
 }
 
 function renderPipelinePage() {
