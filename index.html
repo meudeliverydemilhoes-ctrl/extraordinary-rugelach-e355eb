@@ -2828,6 +2828,7 @@ function cycleLeadStatus(jid){
   var next = LEAD_STATUS_LIST[(idx+1) % LEAD_STATUS_LIST.length];
   if(next.key==='') delete m[jid]; else m[jid]=next.key;
   saveLeadStatus(m);
+  try { if(window._sbLeadUpsert) window._sbLeadUpsert(jid, next.key); } catch(e){}
   var sel='.lead-status-btn[data-ls-jid="'+(window.CSS&&CSS.escape?CSS.escape(jid):jid)+'"]';
   document.querySelectorAll(sel).forEach(function(b){ b.outerHTML = leadStatusBtnHtml(jid); });
   try {
@@ -7660,6 +7661,39 @@ if (document.readyState === 'loading') {
   setTimeout(injectAutomations, 2000);
 }
 
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== Sincroniza STATUS do lead com o Supabase (banco compartilhado) ===== */
+(function(){
+  var SB_URL='https://hxhilzxlptldnazvrkao.supabase.co';
+  var SB_KEY='sb_publishable_AAgpl0EIUB3ekX5fZC4kqA_-ZwYvKys';
+  var tries=0;
+  function start(){
+    tries++;
+    if(!window.supabase||!window.supabase.createClient){ if(tries<40) setTimeout(start,300); return; }
+    var sb;
+    try { sb=window.supabase.createClient(SB_URL,SB_KEY); } catch(e){ return; }
+    window._sbLeadUpsert=function(jid,statusKey){
+      try{
+        if(statusKey) sb.from('crm_lead_status').upsert({jid:jid,status:statusKey,updated_at:new Date().toISOString()}).then(function(){},function(){});
+        else sb.from('crm_lead_status').delete().eq('jid',jid).then(function(){},function(){});
+      }catch(e){}
+    };
+    // sync inicial: traz status do banco e mescla no cache local, depois re-renderiza
+    sb.from('crm_lead_status').select('jid,status').then(function(res){
+      try{
+        if(res && res.data){
+          var m={}; try{ m=JSON.parse(localStorage.getItem('meucrm_lead_status')||'{}'); }catch(e){}
+          res.data.forEach(function(r){ if(r.status) m[r.jid]=r.status; });
+          localStorage.setItem('meucrm_lead_status', JSON.stringify(m));
+          if(typeof renderConvs==='function') renderConvs();
+        }
+      }catch(e){}
+    }, function(){});
+  }
+  start();
 })();
 </script>
 </body>
