@@ -7687,7 +7687,7 @@ if (document.readyState === 'loading') {
         sb.from('crm_kv').upsert({key:key,value:val,updated_at:new Date().toISOString()}).then(function(){},function(){});
       }catch(e){}
     };
-    [['saveTags','meucrm_tags'],['saveContactTags','meucrm_contact_tags'],['saveDealValues','meucrm_deal_values']].forEach(function(p){
+    [['saveTags','meucrm_tags'],['saveContactTags','meucrm_contact_tags'],['saveDealValues','meucrm_deal_values'],['saveNotes','meucrm_hs_notes'],['savePipeManual','meucrm_pipe_manual'],['saveFollowups','meucrm_followups']].forEach(function(p){
       var fn=p[0], key=p[1];
       if(typeof window[fn]==='function'){ var orig=window[fn]; window[fn]=function(){ var r=orig.apply(this,arguments); window._sbKvUpsert(key); return r; }; }
     });
@@ -7697,6 +7697,7 @@ if (document.readyState === 'loading') {
         if(typeof loadTags==='function') loadTags();
         if(typeof loadContactTags==='function') loadContactTags();
         if(typeof loadDealValues==='function') loadDealValues();
+        if(typeof loadFollowups==='function') loadFollowups();
         if(typeof renderConvs==='function') renderConvs();
         if(typeof renderPipelinePage==='function' && document.getElementById('pipe-kanban')) renderPipelinePage();
       } }catch(e){}
