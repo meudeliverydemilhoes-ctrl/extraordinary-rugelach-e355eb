@@ -7857,15 +7857,18 @@ if (document.readyState === 'loading') {
     if(changed){ var sb=document.querySelector('input[placeholder*="Buscar"]'); if(sb&&sb.value===''){ sb.dispatchEvent(new Event('input',{bubbles:true})); } }
   }catch(e){} }
   function lazyNames(){ try{
-    if(!window.state||!Array.isArray(state.chats))return; var m=loadNames(); var n=0;
-    for(var i=0;i<state.chats.length&&n<6;i++){ var c=state.chats[i]; if(!c||!c.remoteJid)continue; if(c.remoteJid.indexOf('@g.us')>=0)continue;
+    if(!window.state||!Array.isArray(state.chats))return;
+    // so olha conversa aberta (aba Conversas) pra nao pesar; e so as 40 mais recentes
+    if(!document.querySelector('input[placeholder*="Buscar"]'))return;
+    var m=loadNames(); var n=0; var max=Math.min(state.chats.length,40);
+    for(var i=0;i<max&&n<2;i++){ var c=state.chats[i]; if(!c||!c.remoteJid)continue; if(c.remoteJid.indexOf('@g.us')>=0)continue;
       var cur=(c.pushName||'').trim(); var raw=!cur||cur===c.remoteJid.split('@')[0]; if(!raw)continue;
       if(m[c.remoteJid]||missCache[c.remoteJid])continue; n++;
       (function(jid,ph){ fetchInfo(ph).then(function(info){ if(info&&info.nome){saveName(jid,info.nome); applyNames();} else {missCache[jid]=1;} }); })(c.remoteJid, c.remoteJid.replace(/@.*/,'').replace(/\D/g,''));
     }
   }catch(e){} }
-  setInterval(applyNames,4000);
-  setInterval(lazyNames,5000);
+  setInterval(applyNames,6000);
+  setInterval(lazyNames,9000);
   setTimeout(applyNames,1500);
 })();
 </script>
