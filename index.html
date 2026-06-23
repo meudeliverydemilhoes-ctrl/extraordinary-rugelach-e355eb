@@ -6727,14 +6727,17 @@ async function analyzeConv() {
   }).join('\n');
 
   var prompt =
-    'Voce esta analisando uma conversa de atendimento via WhatsApp entre um atendente e um cliente.\n\n'
+    'Voce e um especialista em vendas de alto ticket da Mentoria Delivery Pro (mentoria para donos de delivery, ticket acima de R$10mil). '
+    + 'Analise a conversa de WhatsApp abaixo entre a equipe comercial (ATENDENTE) e um possivel cliente (LEAD).\n\n'
     + 'Transcript (mais recente no final):\n\n' + transcript_truncate(msgs, 12000) + '\n\n'
-    + 'Faca uma analise em portugues brasileiro dividida em 4 secoes com marcadores claros:\n'
-    + '1. RESUMO: 2-3 frases sobre o que esta acontecendo.\n'
-    + '2. PONTOS CRITICOS: problemas, atrasos, frustracoes, oportunidades perdidas.\n'
-    + '3. PERFORMANCE DO ATENDENTE: nota de 1-10 e justificativa (claridade, empatia, rapidez, resolucao).\n'
-    + '4. PROXIMAS ACOES: 2-4 acoes concretas que o atendente deve fazer agora.\n\n'
-    + 'Use linguagem direta, sem rodeios. Nao reproduza texto literal da conversa, so analise.';
+    + 'Responda em portugues brasileiro, direto e pratico, com estas secoes e marcadores claros:\n\n'
+    + '1. RESUMO DO LEAD: quem e, que tipo de negocio tem e em que momento da conversa esta (2-3 frases).\n'
+    + '2. TEMPERATURA E QUALIFICACAO: classifique como QUENTE, MORNO ou FRIO e explique. Diga o que ja sabemos e o que ainda falta descobrir (faturamento mensal, se e o dono/decisor, principal desafio, se ja agendou reuniao).\n'
+    + '3. SINAIS DE COMPRA E OBJECOES: o que indica interesse real, e quais objecoes, medos ou duvidas aparecem (preco, tempo, confianca, etc.).\n'
+    + '4. NOTA DO ATENDIMENTO: nota de 1 a 10 para a conducao do atendente e o porque (clareza, empatia, conducao da venda, rapidez).\n'
+    + '5. PROXIMA MENSAGEM SUGERIDA: escreva UMA mensagem pronta, no tom caloroso e consultivo da Brenda, que o atendente pode copiar e enviar agora para avancar esse lead. Use o nome do lead se souber.\n'
+    + '6. PROXIMAS ACOES: 2 a 3 passos concretos e quando fazer o follow-up.\n\n'
+    + 'Seja especifico e baseie tudo na conversa. Nao reproduza o texto literal, so analise e oriente.';
 
   try {
     var r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -6747,7 +6750,7 @@ async function analyzeConv() {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 1400,
+        max_tokens: 2200,
         messages: [{ role: 'user', content: prompt }]
       })
     });
@@ -7764,6 +7767,31 @@ if (document.readyState === 'loading') {
     .mobile-back{ display:inline-flex !important; align-items:center; gap:5px; background:linear-gradient(180deg,#10b981,#059467) !important; color:#fff !important; font-weight:700 !important; border-radius:10px !important; padding:8px 12px !important; box-shadow:0 4px 12px rgba(16,185,129,.3); }
   }
 </style>
+
+<script id="ai-proxy">
+(function(){
+  // Faz os guards de "configure a chave" passarem (a chave real fica no servidor)
+  try{
+    if(typeof window.cfg==='function'){
+      var _cfg=window.cfg;
+      window.cfg=function(k){ var v=_cfg(k); if(k==='anth' && !v) return 'server-proxy'; return v; };
+    }
+  }catch(e){}
+  // Redireciona chamadas da Anthropic para a funcao segura no servidor (chave fica escondida)
+  try{
+    var _fetch=window.fetch;
+    window.fetch=function(u,o){
+      try{
+        if(typeof u==='string' && u.indexOf('api.anthropic.com/v1/messages')>=0){
+          u='/.netlify/functions/claude';
+          if(o && o.headers){ try{ delete o.headers['x-api-key']; delete o.headers['anthropic-dangerous-direct-browser-access']; }catch(e){} }
+        }
+      }catch(e){}
+      return _fetch.call(this,u,o);
+    };
+  }catch(e){}
+})();
+</script>
 
 </body>
 </html>
