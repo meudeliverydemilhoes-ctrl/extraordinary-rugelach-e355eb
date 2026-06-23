@@ -7795,6 +7795,47 @@ if (document.readyState === 'loading') {
   }catch(e){}
 })();
 </script>
+<script>
+/* === FICHA DO FORMULARIO (puxa do n8n /webhook/lead-info) === */
+(function(){
+  var EP='https://n8n.srv1647762.hstgr.cloud/webhook/lead-info';
+  var cache={};
+  function dig(jid){return String(jid||'').replace(/@.*/,'').replace(/\D/g,'');}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function getJid(){ try{ return (window.state&&state.selectedJid)||window.jid||''; }catch(e){return '';} }
+  function fetchInfo(ph){
+    return new Promise(function(res){
+      if(cache[ph]!==undefined){res(cache[ph]);return;}
+      var tries=[ph]; if(ph.indexOf('55')===0)tries.push(ph.slice(2));
+      (function go(i){
+        if(i>=tries.length){cache[ph]=null;res(null);return;}
+        fetch(EP+'?phone='+tries[i]).then(function(r){return r.json();}).then(function(j){
+          if(j&&(j.nome||j.faturamento||j.notas||j.email)){cache[ph]=j;res(j);}else go(i+1);
+        }).catch(function(){go(i+1);});
+      })(0);
+    });
+  }
+  function render(info){
+    var old=document.getElementById('form-ficha'); if(old)old.remove();
+    if(!info)return;
+    var host=document.querySelector('.chat-header'); if(!host)return;
+    var notas=(info.notas||'').replace(/\s*\|\s*/g,' • ');
+    var box=document.createElement('div'); box.id='form-ficha';
+    box.style.cssText='margin:0;padding:9px 14px;background:#0e1a16;border-bottom:1px solid #1f3a30;font-size:12.5px;color:#cfeede;line-height:1.55;';
+    box.innerHTML='<span style="font-weight:700;color:#7CF3C4;">📋 Formulário:</span> '
+      + (info.nome?'<b>'+esc(info.nome)+'</b> ':'')
+      + (info.faturamento?'· 💰 '+esc(info.faturamento)+' ':'')
+      + (info.email?'· '+esc(info.email)+' ':'')
+      + (info.empresa?'· '+esc(info.empresa)+' ':'')
+      + (notas?'<div style="margin-top:3px;color:#8fb3a3;">'+esc(notas)+'</div>':'');
+    host.parentNode.insertBefore(box, host.nextSibling);
+  }
+  function update(){ var jid=getJid(); if(!jid){var b=document.getElementById('form-ficha');if(b)b.remove();return;} var ph=dig(jid); if(ph.length<8)return; fetchInfo(ph).then(render); }
+  if(typeof window.selectChat==='function'){ var o=window.selectChat; window.selectChat=function(){ var r=o.apply(this,arguments); setTimeout(update,350); return r; }; }
+  var last=null;
+  setInterval(function(){ var jid=getJid(); if(jid!==last){last=jid; setTimeout(update,200);} },1000);
+})();
+</script>
 
 </body>
 </html>
