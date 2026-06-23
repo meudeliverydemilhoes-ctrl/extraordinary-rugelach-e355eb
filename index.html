@@ -3378,15 +3378,14 @@ async function renderGroupsPage() {
     kpi('Com Resumo IA', withSummary, 'grupos analisados', '&#129504;', '', '')
   ].join('');
 
-  // Buscar ultimas msgs de cada grupo
+  // Buscar ultimas msgs de cada grupo — EM PARALELO e com timeout, pra nunca travar a pagina
   var grpMsgs = {};
   try {
-    for (var i = 0; i < Math.min(grupos.length, 20); i++) {
-      var g = grupos[i];
-      try {
-        grpMsgs[g.remoteJid] = await grpFetchMessages(g.remoteJid);
-      } catch(e) { grpMsgs[g.remoteJid] = []; }
-    }
+    var _topG = grupos.slice(0, 20);
+    var _toMsgs = function(p, ms){ return Promise.race([ p, new Promise(function(res){ setTimeout(function(){ res([]); }, ms); }) ]); };
+    await Promise.all(_topG.map(function(g){
+      return _toMsgs(grpFetchMessages(g.remoteJid).catch(function(){ return []; }), 7000).then(function(m){ grpMsgs[g.remoteJid] = m || []; });
+    }));
   } catch(e) {}
 
   // Store msgs for IA summary generation
