@@ -2958,7 +2958,8 @@ function renderPipelinePage() {
   document.getElementById('pipe-kanban').innerHTML = cols.map((col, ci) => {
     var colItems = items.filter(it => it.stage === col.key).sort((a,b) => a.diff - b.diff);
     var cards = colItems.slice(0, 20).map(it =>
-      '<div class="pipe-card" style="border-left-color:' + col.color + ';position:relative" draggable="true"'
+      '<div class="pipe-card" style="border-left-color:' + col.color + ';position:relative;cursor:pointer" draggable="true"'
+      + ' onclick="openChat(\'' + escapeJS(it.jid) + '\');showView(\'conv\')"'
       + ' ondragstart="pipeDragStart(event,\'' + escapeJS(it.jid) + '\')" data-jid="' + escapeHtml(it.jid) + '">'
       + '<div class="pipe-card-actions">'
       + '<button class="pipe-move-btn" onclick="event.stopPropagation();pipeOpenMove(\'' + escapeJS(it.jid) + '\',\'' + escapeJS(it.name) + '\')" title="Mover">&#8644;</button>'
