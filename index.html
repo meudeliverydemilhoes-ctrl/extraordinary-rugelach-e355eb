@@ -7949,6 +7949,23 @@ if (document.readyState === 'loading') {
     state.chats.forEach(function(c){ if(!c||!c.remoteJid)return; var nm=m[c.remoteJid]; if(nm){ state.contactMap[c.remoteJid]=nm; var cur=(c.pushName||'').trim(); if(!cur||cur===c.remoteJid.split('@')[0]){ c.pushName=nm; changed=true; } } });
     if(changed){ var sb=document.querySelector('input[placeholder*="Buscar"]'); if(sb&&sb.value===''){ sb.dispatchEvent(new Event('input',{bubbles:true})); } }
   }catch(e){} }
+  function looksName(s){ s=String(s||'').trim(); if(s.length<2)return false; if(!/[a-zA-ZÀ-ÿ]/.test(s))return false; if(/^\d+$/.test(s))return false; return true; }
+  function waNameFromMsgs(jid){
+    return new Promise(function(res){
+      try{
+        var cfg=JSON.parse(localStorage.getItem('meucrm_cfg')||'{}');
+        if(!cfg.url||!cfg.inst){res(null);return;}
+        var url='/.netlify/functions/evo?target='+encodeURIComponent(cfg.url+'/chat/findMessages/'+cfg.inst);
+        fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.key},body:JSON.stringify({where:{key:{remoteJid:jid}},limit:20})})
+          .then(function(r){return r.json();}).then(function(j){
+            var arr=(j.messages&&j.messages.records)||j.messages||j||[];
+            if(!Array.isArray(arr)){res(null);return;}
+            for(var i=0;i<arr.length;i++){ var m=arr[i]; if(m.key&&!m.key.fromMe&&m.pushName&&looksName(m.pushName)){res(m.pushName);return;} }
+            res(null);
+          }).catch(function(){res(null);});
+      }catch(e){res(null);}
+    });
+  }
   function lazyNames(){ try{
     if(!window.state||!Array.isArray(state.chats))return;
     // so na aba Conversas pra nao pesar; varre a lista TODA aos poucos (cursor rolante)
@@ -7962,7 +7979,7 @@ if (document.readyState === 'loading') {
       var cur=(c.pushName||'').trim(); var raw=!cur||cur===c.remoteJid.split('@')[0]; if(!raw)continue;
       if(m[c.remoteJid]||miss[c.remoteJid]||missCache[c.remoteJid])continue;
       done++;
-      (function(jid){ var ph=resolvePhone(jid); fetchInfo(ph).then(function(info){ if(info&&info.nome){saveName(jid,info.nome); applyNames();} else {missCache[jid]=1; saveMiss(jid);} }); })(c.remoteJid);
+      (function(jid){ var ph=resolvePhone(jid); fetchInfo(ph).then(function(info){ if(info&&info.nome){saveName(jid,info.nome); applyNames();} else { waNameFromMsgs(jid).then(function(wn){ if(wn){saveName(jid,wn); applyNames();} else {missCache[jid]=1; saveMiss(jid);} }); } }); })(c.remoteJid);
     }
   }catch(e){} }
   setInterval(applyNames,6000);
