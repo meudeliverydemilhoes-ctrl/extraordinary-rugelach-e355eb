@@ -2079,6 +2079,29 @@ async function loadMessages(jid) {
     // Sort por timestamp asc
     all.sort((a,b) => (a.messageTimestamp||0) - (b.messageTimestamp||0));
 
+    // Puxa o NOME do perfil do WhatsApp de quem mandou msg (qualquer lead, nao so formulario)
+    try {
+      if (chat) {
+        var _cur = (chat.pushName||'').trim();
+        var _isNum = !_cur || _cur === chat.remoteJid.split('@')[0];
+        if (_isNum) {
+          for (var _i = 0; _i < all.length; _i++) {
+            var _m = all[_i];
+            var _pn = _m && _m.key && !_m.key.fromMe ? _m.pushName : null;
+            if (_pn && /[a-zA-ZÀ-ÿ]/.test(_pn) && !/^\d+$/.test(_pn.trim()) && _pn.trim().length >= 2) {
+              var _nm = _pn.trim();
+              try { var _K='meucrm_form_names'; var _mp=JSON.parse(localStorage.getItem(_K)||'{}'); if(_mp[chat.remoteJid]!==_nm){ _mp[chat.remoteJid]=_nm; localStorage.setItem(_K,JSON.stringify(_mp)); if(typeof window.scheduleKvSync==='function')window.scheduleKvSync(_K); } } catch(e){}
+              chat.pushName = _nm;
+              state.contactMap = state.contactMap || {}; state.contactMap[chat.remoteJid] = _nm;
+              try { var _sb=document.querySelector('input[placeholder*="Buscar"]'); if(_sb&&_sb.value==='')_sb.dispatchEvent(new Event('input',{bubbles:true})); } catch(e){}
+              if (state.selectedJid === jid) { state._chatRenderedJid = null; }
+              break;
+            }
+          }
+        }
+      }
+    } catch(e){}
+
     // So re-renderiza se mensagens realmente mudaram (evita flash/pulo)
     var newIds = all.map(m => (m.key && m.key.id) || m.id).join(',');
     var oldIds = state.messages.map(m => (m.key && m.key.id) || m.id).join(',');
