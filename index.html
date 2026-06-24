@@ -7937,8 +7937,11 @@ if (document.readyState === 'loading') {
   setInterval(function(){ var jid=getJid(); if(jid!==last){last=jid; setTimeout(update,200);} },1000);
 
   /* === puxar o NOME do lead do formulario pra lista/cards === */
-  var NAMES_KEY='meucrm_form_names', missCache={};
+  var NAMES_KEY='meucrm_form_names', MISS_KEY='meucrm_form_misses', missCache={};
+  var _lazyIdx=0;
   function loadNames(){try{return JSON.parse(localStorage.getItem(NAMES_KEY)||'{}');}catch(e){return {};}}
+  function loadMiss(){try{return JSON.parse(localStorage.getItem(MISS_KEY)||'{}');}catch(e){return {};}}
+  function saveMiss(jid){try{var m=loadMiss(); if(!m[jid]){m[jid]=1; localStorage.setItem(MISS_KEY,JSON.stringify(m));}}catch(e){}}
   function saveName(jid,nome){ if(!jid||!nome)return; try{var m=loadNames(); if(m[jid]!==nome){m[jid]=nome; localStorage.setItem(NAMES_KEY,JSON.stringify(m));}}catch(e){} }
   function applyNames(){ try{
     if(!window.state||!Array.isArray(state.chats))return;
@@ -7948,17 +7951,22 @@ if (document.readyState === 'loading') {
   }catch(e){} }
   function lazyNames(){ try{
     if(!window.state||!Array.isArray(state.chats))return;
-    // so olha conversa aberta (aba Conversas) pra nao pesar; e so as 40 mais recentes
+    // so na aba Conversas pra nao pesar; varre a lista TODA aos poucos (cursor rolante)
     if(!document.querySelector('input[placeholder*="Buscar"]'))return;
-    var m=loadNames(); var n=0; var max=Math.min(state.chats.length,40);
-    for(var i=0;i<max&&n<2;i++){ var c=state.chats[i]; if(!c||!c.remoteJid)continue; if(c.remoteJid.indexOf('@g.us')>=0)continue;
+    var m=loadNames(), miss=loadMiss(); var done=0, scanned=0, total=state.chats.length;
+    while(done<5 && scanned<total){
+      if(_lazyIdx>=total)_lazyIdx=0;
+      var c=state.chats[_lazyIdx]; _lazyIdx++; scanned++;
+      if(!c||!c.remoteJid)continue;
+      if(c.remoteJid.indexOf('@g.us')>=0)continue;
       var cur=(c.pushName||'').trim(); var raw=!cur||cur===c.remoteJid.split('@')[0]; if(!raw)continue;
-      if(m[c.remoteJid]||missCache[c.remoteJid])continue; n++;
-      (function(jid,ph){ fetchInfo(ph).then(function(info){ if(info&&info.nome){saveName(jid,info.nome); applyNames();} else {missCache[jid]=1;} }); })(c.remoteJid, c.remoteJid.replace(/@.*/,'').replace(/\D/g,''));
+      if(m[c.remoteJid]||miss[c.remoteJid]||missCache[c.remoteJid])continue;
+      done++;
+      (function(jid){ var ph=resolvePhone(jid); fetchInfo(ph).then(function(info){ if(info&&info.nome){saveName(jid,info.nome); applyNames();} else {missCache[jid]=1; saveMiss(jid);} }); })(c.remoteJid);
     }
   }catch(e){} }
   setInterval(applyNames,6000);
-  setInterval(lazyNames,9000);
+  setInterval(lazyNames,7000);
   setTimeout(applyNames,1500);
 })();
 </script>
