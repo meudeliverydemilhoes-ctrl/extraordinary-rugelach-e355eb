@@ -8151,5 +8151,38 @@ window.juntarContato = function(){
   });
 })();
 </script>
+<script>
+/* GARANTE_MESCLAGEM_MANUAL: aplica os merges manuais (botao Juntar) de forma robusta,
+   caso o motor principal nao tenha dobrado algum par. */
+(function(){
+  function applyForced(){
+    try{
+      if(!window.state||!Array.isArray(state.chats))return;
+      var forced=JSON.parse(localStorage.getItem('meucrm_force_merge')||'[]');
+      if(!forced.length)return;
+      var chats=state.chats, changed=false;
+      forced.forEach(function(group){
+        if(!Array.isArray(group)||group.length<2)return;
+        var want={}; group.forEach(function(j){want[j]=1;});
+        var hits=chats.filter(function(c){ return want[c.remoteJid] || (c.linkedJids||[]).some(function(lj){return want[lj];}); });
+        if(hits.length<2)return;
+        hits.sort(function(a,b){ var ap=a.remoteJid.endsWith('@s.whatsapp.net')?0:1, bp=b.remoteJid.endsWith('@s.whatsapp.net')?0:1; if(ap!==bp)return ap-bp; return new Date(b.updatedAt||0)-new Date(a.updatedAt||0); });
+        var canon=hits[0]; canon.linkedJids=canon.linkedJids||[]; var rm={};
+        for(var i=1;i<hits.length;i++){ var ex=hits[i]; if(canon.linkedJids.indexOf(ex.remoteJid)<0){canon.linkedJids.push(ex.remoteJid);changed=true;} (ex.linkedJids||[]).forEach(function(lj){if(canon.linkedJids.indexOf(lj)<0)canon.linkedJids.push(lj);}); if(!canon.pushName&&ex.pushName)canon.pushName=ex.pushName; rm[ex.remoteJid]=1; }
+        if(Object.keys(rm).length){ chats=chats.filter(function(c){ return c===canon || !rm[c.remoteJid]; }); changed=true; }
+      });
+      if(changed){
+        state.chats=chats;
+        try{ var sb=document.querySelector('input[placeholder*="Buscar"]'); if(sb&&sb.value==='')sb.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+        try{ if(typeof renderPipelinePage==='function'&&document.getElementById('pipe-kanban'))renderPipelinePage(); }catch(e){}
+        try{ if(state.selectedJid&&typeof renderMessages==='function'){ } }catch(e){}
+      }
+    }catch(e){}
+  }
+  window.__applyForcedMerges=applyForced;
+  setInterval(applyForced, 3500);
+  setTimeout(applyForced, 1500);
+})();
+</script>
 </body>
 </html>
