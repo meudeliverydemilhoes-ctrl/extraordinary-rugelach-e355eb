@@ -1946,6 +1946,37 @@ async function loadChats() {
     // Grupos sem merge
     groups.forEach(g => merged.push(Object.assign({ linkedJids: [] }, g)));
 
+    // ====== MERGE MANUAL (forcado pela usuaria) ======
+    // localStorage.meucrm_force_merge = [ ["<jidA>","<jidB>", ...], ... ]
+    try {
+      var forced = JSON.parse(localStorage.getItem('meucrm_force_merge') || '[]');
+      forced.forEach(function(group){
+        if (!Array.isArray(group) || group.length < 2) return;
+        var want = {}; group.forEach(function(j){ want[j] = true; });
+        var hits = merged.filter(function(c){
+          if (want[c.remoteJid]) return true;
+          return (c.linkedJids||[]).some(function(lj){ return want[lj]; });
+        });
+        if (hits.length < 2) return;
+        hits.sort(function(a,b){
+          var ap = a.remoteJid.endsWith('@s.whatsapp.net')?0:1;
+          var bp = b.remoteJid.endsWith('@s.whatsapp.net')?0:1;
+          if (ap!==bp) return ap-bp;
+          return new Date(b.updatedAt||0) - new Date(a.updatedAt||0);
+        });
+        var canon = hits[0];
+        canon.linkedJids = canon.linkedJids || [];
+        for (var hi=1; hi<hits.length; hi++){
+          var ex = hits[hi];
+          if (canon.linkedJids.indexOf(ex.remoteJid)<0) canon.linkedJids.push(ex.remoteJid);
+          (ex.linkedJids||[]).forEach(function(lj){ if (canon.linkedJids.indexOf(lj)<0) canon.linkedJids.push(lj); });
+          if (!canon.pushName && ex.pushName) canon.pushName = ex.pushName;
+          if ((ex.unreadCount||0) > 0) canon.unreadCount = (canon.unreadCount||0) + ex.unreadCount;
+        }
+        merged = merged.filter(function(c){ return c===canon || hits.indexOf(c)<0; });
+      });
+    } catch(e){}
+
     // Estatisticas
     state.mergeStats = {
       before: chats.length,
