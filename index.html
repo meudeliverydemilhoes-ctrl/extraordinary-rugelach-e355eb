@@ -7786,7 +7786,7 @@ if (document.readyState === 'loading') {
       }catch(e){}
     };
     (function(){
-      var SYNC_KEYS={'meucrm_tags':1,'meucrm_contact_tags':1,'meucrm_deal_values':1,'meucrm_hs_notes':1,'meucrm_pipe_manual':1,'meucrm_followups':1};
+      var SYNC_KEYS={'meucrm_tags':1,'meucrm_contact_tags':1,'meucrm_deal_values':1,'meucrm_hs_notes':1,'meucrm_pipe_manual':1,'meucrm_followups':1,'meucrm_pipe_cols':1};
       try{
         var _origSet=localStorage.setItem.bind(localStorage);
         localStorage.setItem=function(k,v){ var r=_origSet(k,v); try{ if(SYNC_KEYS[k]&&typeof window._sbKvUpsert==='function') window._sbKvUpsert(k); }catch(e){} return r; };
