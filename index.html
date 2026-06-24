@@ -7815,10 +7815,27 @@ if (document.readyState === 'loading') {
   function dig(jid){return String(jid||'').replace(/@.*/,'').replace(/\D/g,'');}
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function getJid(){ try{ return (window.state&&state.selectedJid)||window.jid||''; }catch(e){return '';} }
+  function phoneVariants(p){
+    var out=[],seen={};
+    function add(x){ if(x&&!seen[x]){seen[x]=1;out.push(x);} }
+    add(p);
+    if(p.indexOf('55')===0){
+      var rest=p.slice(2); add(rest);
+      var ddd=rest.slice(0,2), num=rest.slice(2);
+      if(num.length===8){ add('55'+ddd+'9'+num); add(ddd+'9'+num); }
+      if(num.length===9&&num.charAt(0)==='9'){ add('55'+ddd+num.slice(1)); add(ddd+num.slice(1)); }
+    } else if(p.length>=10){
+      var ddd2=p.slice(0,2), num2=p.slice(2);
+      add('55'+p);
+      if(num2.length===8){ add('55'+ddd2+'9'+num2); }
+      if(num2.length===9&&num2.charAt(0)==='9'){ add('55'+ddd2+num2.slice(1)); add(ddd2+num2.slice(1)); }
+    }
+    return out;
+  }
   function fetchInfo(ph){
     return new Promise(function(res){
       if(cache[ph]!==undefined){res(cache[ph]);return;}
-      var tries=[ph]; if(ph.indexOf('55')===0)tries.push(ph.slice(2));
+      var tries=phoneVariants(ph);
       (function go(i){
         if(i>=tries.length){cache[ph]=null;res(null);return;}
         fetch(EP+'?phone='+tries[i]).then(function(r){return r.json();}).then(function(j){
@@ -7853,7 +7870,18 @@ if (document.readyState === 'loading') {
     try{ setOpen(localStorage.getItem('ff-expanded')==='1'); }catch(e){}
   }
   function ensureNote(jid,info){ try{ if(!info||!jid)return; var K='meucrm_hs_notes'; var all=JSON.parse(localStorage.getItem(K)||'{}'); var arr=all[jid]||[]; if(arr.some(function(n){return (n.text||'').indexOf('[Formulario]')>=0;}))return; var t='[Formulario]\n'+(info.nome?'Nome: '+info.nome+'\n':'')+(info.faturamento?'Faturamento: '+info.faturamento+'\n':'')+(info.email?'Email: '+info.email+'\n':'')+(info.empresa?'Instagram/Empresa: '+info.empresa+'\n':'')+(info.notas?info.notas:''); arr.unshift({text:t.trim(),created:new Date().toISOString()}); all[jid]=arr; localStorage.setItem(K,JSON.stringify(all)); try{ if(typeof window.scheduleKvSync==='function')window.scheduleKvSync('meucrm_hs_notes'); }catch(e){} }catch(e){} }
-  function update(){ var jid=getJid(); if(!jid){var b=document.getElementById('form-ficha');if(b)b.remove();return;} var ph=dig(jid); if(ph.length<8)return; fetchInfo(ph).then(function(info){ render(info); if(info){ensureNote(jid,info); if(info.nome){saveName(jid,info.nome); applyNames();}} }); }
+  function resolvePhone(jid){
+    // 1) override manual (jid ou digitos) -> telefone do formulario
+    try{ var ov=JSON.parse(localStorage.getItem('meucrm_ficha_override')||'{}'); if(ov[jid])return String(ov[jid]).replace(/\D/g,''); var d0=dig(jid); if(ov[d0])return String(ov[d0]).replace(/\D/g,''); }catch(e){}
+    // 2) jid @lid -> usa o numero real (remoteJidAlt) da ultima mensagem
+    if(String(jid).indexOf('@lid')>=0){
+      try{ var c=(window.state&&state.chats||[]).find(function(x){return x.remoteJid===jid;});
+        var alt=c&&c.lastMessage&&c.lastMessage.key&&c.lastMessage.key.remoteJidAlt;
+        if(alt) return String(alt).replace(/@.*/,'').replace(/\D/g,''); }catch(e){}
+    }
+    return dig(jid);
+  }
+  function update(){ var jid=getJid(); if(!jid){var b=document.getElementById('form-ficha');if(b)b.remove();return;} var ph=resolvePhone(jid); if(ph.length<8)return; fetchInfo(ph).then(function(info){ render(info); if(info){ensureNote(jid,info); if(info.nome){saveName(jid,info.nome); applyNames();}} }); }
   if(typeof window.selectChat==='function'){ var o=window.selectChat; window.selectChat=function(){ var r=o.apply(this,arguments); setTimeout(update,350); return r; }; }
   var last=null;
   setInterval(function(){ var jid=getJid(); if(jid!==last){last=jid; setTimeout(update,200);} },1000);
