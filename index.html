@@ -163,6 +163,7 @@
   .lead-status-btn.ls-comprou { background:var(--acc); color:#fff; }
   .lead-status-btn.ls-naocomprou { background:var(--danger); color:#fff; }
   .lead-status-btn.ls-chamar { background:var(--warn); color:#1a1a1a; }
+  .lead-status-btn.ls-atendimentoapi { background:#f97316; color:#fff; }
   .lead-status-tag { display:inline-block; margin-top:3px; padding:2px 9px; border-radius:10px; font-size:11px; font-weight:700; }
   .lead-status-tag.ls-agendada { background:var(--info); color:#fff; }
   .lead-status-tag.ls-feita { background:#7c5cff; color:#fff; }
@@ -170,6 +171,7 @@
   .lead-status-tag.ls-comprou { background:var(--acc); color:#fff; }
   .lead-status-tag.ls-naocomprou { background:var(--danger); color:#fff; }
   .lead-status-tag.ls-chamar { background:var(--warn); color:#1a1a1a; }
+  .lead-status-tag.ls-atendimentoapi { background:#f97316; color:#fff; }
   @media (max-width:600px) {
     .nav { -webkit-overflow-scrolling:touch; gap:2px; }
     .nav::-webkit-scrollbar { display:none; }
@@ -2894,7 +2896,8 @@ var LEAD_STATUS_LIST = [
   { key:'aprovado',   label:'✅ Lead Aprovado',      cls:'ls-aprovado' },
   { key:'comprou',    label:'💰 Comprou',            cls:'ls-comprou' },
   { key:'naocomprou', label:'❌ Não comprou',        cls:'ls-naocomprou' },
-  { key:'chamar',     label:'🔁 Chamar novamente',   cls:'ls-chamar' }
+  { key:'chamar',     label:'🔁 Chamar novamente',   cls:'ls-chamar' },
+  { key:'atendimentoapi', label:'📞 Atendimento API', cls:'ls-atendimentoapi' }
 ];
 function loadLeadStatus(){ try{ return JSON.parse(localStorage.getItem('meucrm_lead_status')||'{}'); }catch(e){ return {}; } }
 function saveLeadStatus(m){ localStorage.setItem('meucrm_lead_status', JSON.stringify(m)); }
