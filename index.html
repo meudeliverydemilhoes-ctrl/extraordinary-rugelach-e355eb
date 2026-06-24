@@ -7139,16 +7139,16 @@ function openHsCard(jid,name,pic){
   overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.remove();});
   document.getElementById('hs-close-btn').onclick=function(){overlay.remove();};
   document.getElementById('hs-go-chat').onclick=function(){
-    overlay.remove();
-    try{
-      if(window.state){ state.selectedJid=jid; state._chatRenderedJid=null; }
-      if(typeof showView==='function')showView('conv');
-      if(typeof openChat==='function'){ setTimeout(function(){ try{ openChat(jid); }catch(e){} }, 60); return; }
-    }catch(e){}
-    if(typeof selectChat==='function')selectChat(jid);
-    else if(typeof window.selectChat==='function')window.selectChat(jid);
-    var navConv=document.getElementById('nav-conv');
-    if(navConv)navConv.click();
+    var j=jid;
+    try{ overlay.remove(); }catch(e){}
+    try{ if(window.state){ state.selectedJid=j; state._chatRenderedJid=null; } }catch(e){}
+    try{ if(typeof showView==='function')showView('conv'); }catch(e){}
+    var n=0;
+    var iv=setInterval(function(){
+      n++;
+      try{ if(typeof openChat==='function')openChat(j); }catch(e){}
+      if((window.state&&state.selectedJid===j)||n>=10) clearInterval(iv);
+    },70);
   };
   document.getElementById('hs-move-stage').onclick=function(){
     overlay.remove();
