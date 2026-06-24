@@ -8038,5 +8038,33 @@ window.juntarContato = function(){
   }catch(e){ alert('Erro ao juntar: '+e); }
 };
 </script>
+<script>
+/* OVERRIDE_ABRIRCHAT_FINAL: garante que "Abrir Chat" abra a conversa certa,
+   contornando qualquer handler antigo duplicado. Captura o jid do ultimo card/linha clicado. */
+(function(){
+  var lastJid=null;
+  function openCorrect(jid){
+    try{ var ov=document.getElementById('hs-overlay'); if(ov)ov.remove(); }catch(e){}
+    try{ if(window.state){ state.selectedJid=jid; state._chatRenderedJid=null; } }catch(e){}
+    try{ if(typeof showView==='function')showView('conv'); }catch(e){}
+    var n=0; var iv=setInterval(function(){ n++;
+      try{ if(typeof window.openChat==='function')window.openChat(jid); }catch(e){}
+      if((window.state&&state.selectedJid===jid)||n>=12) clearInterval(iv);
+    },70);
+  }
+  document.addEventListener('click', function(e){
+    var t=e.target;
+    var card=t.closest && (t.closest('.pipe-card[data-jid]')||t.closest('tr[data-jid]'));
+    if(card){ lastJid=card.getAttribute('data-jid'); return; }
+    var go=t.closest && t.closest('#hs-go-chat');
+    if(go){
+      var jid=lastJid;
+      // fallback: tenta achar pelo telefone exibido no painel
+      if(!jid){ var ph=document.querySelector('#hs-overlay .hs-phone'); if(ph){ var d=(ph.textContent||'').replace(/\D/g,''); var c=(window.state&&state.chats||[]).find(function(x){return x.remoteJid.replace(/@.*/,'')===d;}); if(c)jid=c.remoteJid; } }
+      if(jid){ e.preventDefault(); e.stopImmediatePropagation(); openCorrect(jid); }
+    }
+  }, true);
+})();
+</script>
 </body>
 </html>
