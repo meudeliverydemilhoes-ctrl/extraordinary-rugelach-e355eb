@@ -2980,7 +2980,8 @@ function renderPipelinePage() {
   // Kanban editavel
   document.getElementById('pipe-kanban').innerHTML = cols.map((col, ci) => {
     var colItems = items.filter(it => it.stage === col.key).sort((a,b) => a.diff - b.diff);
-    var cards = colItems.slice(0, 20).map(it =>
+    var _cap = (window.__pipeExp && window.__pipeExp[col.key]) ? 300 : 20;
+    var cards = colItems.slice(0, _cap).map(it =>
       '<div class="pipe-card" style="border-left-color:' + col.color + ';position:relative;cursor:pointer" draggable="true"'
       + ' onclick="openChat(\'' + escapeJS(it.jid) + '\');showView(\'conv\')"'
       + ' ondragstart="pipeDragStart(event,\'' + escapeJS(it.jid) + '\')" data-jid="' + escapeHtml(it.jid) + '">'
@@ -2997,7 +2998,7 @@ function renderPipelinePage() {
       + ' <button class="pipe-move-btn" onclick="event.stopPropagation();tagOpenAssign(\'' + escapeJS(it.jid) + '\')" title="Etiquetas" style="font-size:11px">&#127991;</button>'
       + '</div></div>'
     ).join('');
-    var extra = colItems.length > 20 ? '<div style="font-size:11px;color:var(--mut);text-align:center;margin-top:4px">+' + (colItems.length - 20) + ' mais</div>' : '';
+    var extra = colItems.length > _cap ? '<div onclick="event.stopPropagation();window.__pipeExp=window.__pipeExp||{};window.__pipeExp[\'' + col.key + '\']=1;renderPipelinePage()" style="font-size:12px;color:var(--acc);text-align:center;margin-top:6px;padding:9px;cursor:pointer;background:var(--bg3);border-radius:6px;font-weight:600">Ver mais ' + (colItems.length - _cap) + ' &#8595;</div>' : '';
     return '<div class="pipe-col" data-col="' + col.key + '"'
       + ' ondragover="pipeDragOver(event)" ondragleave="pipeDragLeave(event)" ondrop="pipeDrop(event,\'' + escapeJS(col.key) + '\')">'
       + '<div class="pipe-col-header" style="border-bottom-color:' + col.color + '" onclick="pipeEditColumn(' + ci + ')">'
@@ -8087,6 +8088,64 @@ window.juntarContato = function(){
       if(jid){ e.preventDefault(); e.stopImmediatePropagation(); openCorrect(jid); }
     }
   }, true);
+})();
+</script>
+<style>
+.pipe-col.touch-over{ background:rgba(0,168,132,.14)!important; outline:2px dashed var(--acc)!important; outline-offset:-2px; }
+.pipe-card.tdrag-src{ opacity:.3; }
+</style>
+<script>
+/* ARRASTAR POR TOQUE no pipeline (mobile) — segura o card e arrasta pra outra coluna */
+(function(){
+  var jid=null, ghost=null, srcCard=null, sx=0, sy=0, hold=null, dragging=false;
+  function clear(){ if(ghost){ghost.remove();ghost=null;} if(srcCard)srcCard.classList.remove('tdrag-src'); document.querySelectorAll('.pipe-col.touch-over').forEach(function(c){c.classList.remove('touch-over');}); if(hold){clearTimeout(hold);hold=null;} dragging=false; jid=null; srcCard=null; document.body.style.userSelect=''; }
+  document.addEventListener('touchstart', function(e){
+    var card=e.target.closest && e.target.closest('.pipe-card[data-jid]');
+    if(!card) return;
+    if(e.target.closest('button')) return; // deixa os botoes do card funcionarem
+    var t=e.touches[0]; sx=t.clientX; sy=t.clientY; srcCard=card; jid=card.getAttribute('data-jid');
+    hold=setTimeout(function(){
+      dragging=true;
+      var r=card.getBoundingClientRect();
+      ghost=card.cloneNode(true);
+      ghost.style.cssText='position:fixed;left:'+r.left+'px;top:'+r.top+'px;width:'+r.width+'px;margin:0;pointer-events:none;opacity:.92;z-index:99999;transform:scale(1.04);box-shadow:0 10px 28px rgba(0,0,0,.55)';
+      document.body.appendChild(ghost);
+      card.classList.add('tdrag-src');
+      document.body.style.userSelect='none';
+      try{ if(navigator.vibrate) navigator.vibrate(18); }catch(_){}
+    }, 220);
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    if(!jid) return;
+    var t=e.touches[0];
+    if(!dragging){
+      if(Math.abs(t.clientX-sx)>10 || Math.abs(t.clientY-sy)>10){ if(hold){clearTimeout(hold);hold=null;} jid=null; srcCard=null; }
+      return;
+    }
+    e.preventDefault();
+    if(ghost){ ghost.style.left=(t.clientX-ghost.offsetWidth/2)+'px'; ghost.style.top=(t.clientY-28)+'px'; ghost.style.display='none'; }
+    var el=document.elementFromPoint(t.clientX,t.clientY);
+    if(ghost) ghost.style.display='';
+    document.querySelectorAll('.pipe-col.touch-over').forEach(function(c){c.classList.remove('touch-over');});
+    var col=el&&el.closest?el.closest('.pipe-col[data-col]'):null;
+    if(col) col.classList.add('touch-over');
+  }, {passive:false});
+  document.addEventListener('touchend', function(){
+    if(!dragging){ clear(); return; }
+    var col=document.querySelector('.pipe-col.touch-over');
+    var j=jid;
+    if(col && j){
+      var colKey=col.getAttribute('data-col');
+      try{
+        if(typeof pipeManual==='object'){ pipeManual[j]=colKey; }
+        else if(window.pipeManual){ window.pipeManual[j]=colKey; }
+        if(typeof savePipeManual==='function') savePipeManual(window.pipeManual||pipeManual);
+        if(typeof renderPipelinePage==='function') renderPipelinePage();
+        if(typeof toast==='function') toast('Contato movido!','ok');
+      }catch(err){}
+    }
+    clear();
+  });
 })();
 </script>
 </body>
