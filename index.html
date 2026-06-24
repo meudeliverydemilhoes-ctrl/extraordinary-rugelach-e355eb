@@ -1871,17 +1871,35 @@ async function loadChats() {
       else nonGroups.push(c);
     });
 
+    var merged = [];
+    var usedJids = {};
+
+    // -- Passo 0: merge via remoteJidAlt (sinal mais forte: o proprio WhatsApp diz o telefone real do @lid) --
+    var phoneByJid = {};
+    nonGroups.forEach(c => { if (c.remoteJid.endsWith('@s.whatsapp.net')) phoneByJid[c.remoteJid] = c; });
+    nonGroups.forEach(c => {
+      if (!c.remoteJid.endsWith('@lid') || usedJids[c.remoteJid]) return;
+      var alt = c.lastMessage && c.lastMessage.key && c.lastMessage.key.remoteJidAlt;
+      if (!alt) return;
+      var ph = phoneByJid[alt];
+      if (!ph || usedJids[ph.remoteJid]) return;
+      var canon = Object.assign({ linkedJids: [] }, ph);
+      mergeOneInto(canon, c);
+      usedJids[ph.remoteJid] = true; usedJids[c.remoteJid] = true;
+      merged.push(canon);
+    });
+
+    // dos que sobraram (nao mesclados no Passo 0) seguem os passos por foto/nome
+    var remaining = nonGroups.filter(c => !usedJids[c.remoteJid]);
+
     // -- Passo 1: agrupa por profilePicUrl --
     var picBuckets = {};
     var noPic = [];
-    nonGroups.forEach(c => {
+    remaining.forEach(c => {
       var pic = (c.profilePicUrl || '').trim();
       if (pic) (picBuckets[pic] = picBuckets[pic] || []).push(c);
       else noPic.push(c);
     });
-
-    var merged = [];
-    var usedJids = {};
 
     Object.keys(picBuckets).forEach(pic => {
       var bucket = picBuckets[pic];
