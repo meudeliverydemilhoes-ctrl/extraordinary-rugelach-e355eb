@@ -7140,7 +7140,10 @@ function openHsCard(jid,name,pic){
   document.getElementById('hs-close-btn').onclick=function(){overlay.remove();};
   document.getElementById('hs-go-chat').onclick=function(){
     overlay.remove();
-    try{ if(typeof openChat==='function'){ openChat(jid); if(typeof showView==='function')showView('conv'); return; } }catch(e){}
+    try{
+      if(typeof showView==='function')showView('conv');
+      if(typeof openChat==='function'){ setTimeout(function(){ try{ openChat(jid); }catch(e){} }, 80); return; }
+    }catch(e){}
     if(typeof selectChat==='function')selectChat(jid);
     else if(typeof window.selectChat==='function')window.selectChat(jid);
     var navConv=document.getElementById('nav-conv');
