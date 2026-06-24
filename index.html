@@ -7141,8 +7141,9 @@ function openHsCard(jid,name,pic){
   document.getElementById('hs-go-chat').onclick=function(){
     overlay.remove();
     try{
+      if(window.state){ state.selectedJid=jid; state._chatRenderedJid=null; }
       if(typeof showView==='function')showView('conv');
-      if(typeof openChat==='function'){ setTimeout(function(){ try{ openChat(jid); }catch(e){} }, 80); return; }
+      if(typeof openChat==='function'){ setTimeout(function(){ try{ openChat(jid); }catch(e){} }, 60); return; }
     }catch(e){}
     if(typeof selectChat==='function')selectChat(jid);
     else if(typeof window.selectChat==='function')window.selectChat(jid);
