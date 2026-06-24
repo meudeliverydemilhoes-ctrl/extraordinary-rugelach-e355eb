@@ -2321,6 +2321,7 @@ function renderMessages() {
     + '<div class="actions">'
     +   leadStatusBtnHtml(jid)
     +   '<button class="btn" onclick="goToPipelineCard(\'' + escapeJS(jid) + '\')" title="Ir direto ao card no Pipeline">&#128205; Pipeline</button>'
+    +   '<button class="btn" onclick="juntarContato()" title="Juntar com contato duplicado (mesma pessoa)">&#128279; Juntar</button>'
     +   '<button class="btn" onclick="analyzeConv()">&#129504; Analisar IA</button>'
     + '</div></div>'
     + '<div class="messages" id="messages">' + msgsHtml + '</div>'
@@ -7962,5 +7963,48 @@ if (document.readyState === 'loading') {
 })();
 </script>
 
+<script>
+/* === JUNTAR CONTATO DUPLICADO (merge manual persistente) === */
+window.juntarContato = function(){
+  try{
+    var jid = window.state && state.selectedJid;
+    if(!jid){ alert('Abra a conversa primeiro.'); return; }
+    var q = prompt('Juntar esta conversa com qual contato duplicado?\n\nDigite parte do NOME ou do NÚMERO do outro contato:');
+    if(!q) return;
+    q = q.trim().toLowerCase(); var qd = q.replace(/\D/g,'');
+    var matches = (state.chats||[]).filter(function(c){
+      if(!c || !c.remoteJid || c.remoteJid===jid) return false;
+      if(c.remoteJid.endsWith('@g.us')) return false;
+      var nm=(c.pushName||'').toLowerCase();
+      var num=c.remoteJid.replace(/@.*/,'');
+      var alt=(c.lastMessage&&c.lastMessage.key&&c.lastMessage.key.remoteJidAlt)||'';
+      if(qd && qd.length>=4 && (num.indexOf(qd)>=0 || String(alt).indexOf(qd)>=0)) return true;
+      if(nm && nm.indexOf(q)>=0) return true;
+      return false;
+    });
+    if(!matches.length){ alert('Nenhum contato encontrado com "'+q+'".'); return; }
+    var pick = matches[0];
+    if(matches.length>1){
+      var list = matches.slice(0,9).map(function(c,i){ return (i+1)+') '+(c.pushName||c.remoteJid.replace(/@.*/,''))+'  ('+c.remoteJid.replace(/@.*/,'')+')'; }).join('\n');
+      var n = prompt('Achei vários. Digite o número da opção:\n\n'+list);
+      var idx = parseInt(n,10)-1; if(isNaN(idx)||!matches[idx]) return; pick = matches[idx];
+    }
+    var nomeAtual = ((state.chats||[]).find(function(c){return c.remoteJid===jid;})||{}).pushName || jid.replace(/@.*/,'');
+    if(!confirm('Juntar "'+(pick.pushName||pick.remoteJid.replace(/@.*/,''))+'" com "'+nomeAtual+'"?\n\nAs duas conversas viram uma só.')) return;
+    var K='meucrm_force_merge'; var arr=JSON.parse(localStorage.getItem(K)||'[]');
+    function findGroup(j){ return arr.find(function(g){ return Array.isArray(g) && g.indexOf(j)>=0; }); }
+    var gA=findGroup(jid), gB=findGroup(pick.remoteJid);
+    if(gA&&gB&&gA!==gB){ gB.forEach(function(x){ if(gA.indexOf(x)<0)gA.push(x); }); arr.splice(arr.indexOf(gB),1); }
+    else if(gA){ if(gA.indexOf(pick.remoteJid)<0)gA.push(pick.remoteJid); }
+    else if(gB){ if(gB.indexOf(jid)<0)gB.push(jid); }
+    else { arr.push([jid, pick.remoteJid]); }
+    localStorage.setItem(K, JSON.stringify(arr));
+    try{ if(typeof window.scheduleKvSync==='function') window.scheduleKvSync('meucrm_force_merge'); }catch(e){}
+    try{ if(typeof window.loadChats==='function') window.loadChats(); }catch(e){}
+    try{ if(typeof window.renderMessages==='function'){ state._chatRenderedJid=null; renderMessages(); } }catch(e){}
+    try{ if(typeof toast==='function') toast('Contatos juntados! ✅','ok'); else alert('Contatos juntados!'); }catch(e){ alert('Contatos juntados!'); }
+  }catch(e){ alert('Erro ao juntar: '+e); }
+};
+</script>
 </body>
 </html>
