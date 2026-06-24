@@ -81,6 +81,7 @@
   .bubble { max-width:70%; padding:8px 12px 6px; border-radius:10px; background:var(--recv); position:relative; word-wrap:break-word; }
   .msg.out .bubble { background:var(--sent); }
   .bubble-txt { white-space:pre-wrap; line-height:1.4; }
+  .bubble-sender { font-size:11.5px; font-weight:700; margin-bottom:2px; }
   .bubble-meta { font-size:10px; color:var(--mut); display:flex; gap:4px; align-items:center; justify-content:flex-end; margin-top:2px; }
   .bubble-media img { max-width:280px; max-height:280px; border-radius:6px; cursor:pointer; }
   .bubble-media audio { width:280px; }
@@ -2305,6 +2306,17 @@ function renderBubble(m) {
     else if (statuses.includes('DELIVERY_ACK')) check = '<span class="check">&#10003;&#10003;</span>';
     else if (statuses.includes('SERVER_ACK')) check = '<span class="check">&#10003;</span>';
   }
+  // Em grupos, mostra quem mandou cada mensagem (só nas recebidas)
+  var senderHtml = '';
+  var isGroup = (state.selectedJid || '').indexOf('@g.us') >= 0;
+  if (isGroup && !out) {
+    var pj = (m.key && m.key.participant) ? m.key.participant : (m.participant || '');
+    var pnum = pj ? String(pj).split('@')[0] : '';
+    var sname = m.pushName || (m.contactName) || (pnum ? ('+' + pnum) : 'Membro');
+    var hue = 0, src = pj || sname;
+    for (var i = 0; i < src.length; i++) hue = (hue * 31 + src.charCodeAt(i)) % 360;
+    senderHtml = '<div class="bubble-sender" style="color:hsl(' + hue + ',60%,42%)">' + escapeHtml(sname) + '</div>';
+  }
   var body = '';
   if (media.img) body += '<div class="bubble-media"><img src="' + escapeHtml(media.img) + '"></div>';
   if (media.audio) body += '<div class="bubble-media"><audio controls src="' + escapeHtml(media.audio) + '"></audio></div>';
@@ -2312,7 +2324,7 @@ function renderBubble(m) {
   if (t) body += '<div class="bubble-txt">' + escapeHtml(t) + '</div>';
   if (!body) body = '<div class="bubble-txt" style="color:var(--mut);font-style:italic">[mensagem nao suportada]</div>';
   return '<div class="msg ' + (out ? 'out' : 'in') + '">'
-    + '<div class="bubble">' + body
+    + '<div class="bubble">' + senderHtml + body
     + '<div class="bubble-meta">' + time + ' ' + check + '</div>'
     + '</div></div>';
 }
