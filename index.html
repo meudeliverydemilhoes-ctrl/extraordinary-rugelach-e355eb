@@ -7138,6 +7138,7 @@ function openHsCard(jid,name,pic){
 
   overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.remove();});
   document.getElementById('hs-close-btn').onclick=function(){overlay.remove();};
+  /* MARKER_ABRIRCHAT_V7 */
   document.getElementById('hs-go-chat').onclick=function(){
     var j=jid;
     try{ overlay.remove(); }catch(e){}
