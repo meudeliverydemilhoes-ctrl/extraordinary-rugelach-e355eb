@@ -3398,7 +3398,7 @@ async function callAiChat(userMsg) {
   }
 
   try {
-    var r = await fetch('/.netlify/functions/anthropic', {
+    var r = await fetch('/.netlify/functions/claude', {
       method: 'POST',
       headers: {
         'x-api-key': key,
@@ -3798,7 +3798,7 @@ async function botGenerateReply(userMsg, jid, config) {
   var key = cfg('anth');
   if (!key) return null;
   try {
-    var r = await fetch('/.netlify/functions/anthropic', {
+    var r = await fetch('/.netlify/functions/claude', {
       method: 'POST',
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -6532,7 +6532,7 @@ var iaData = { convAnalyses: [], scorecard: null, whatsapp: null, script: null, 
 async function claudeCall(systemPrompt, userPrompt, maxTokens) {
   var key = cfg('anth');
   if (!key) throw new Error('Configure sua Anthropic API key em Config');
-  var r = await fetch('/.netlify/functions/anthropic', {
+  var r = await fetch('/.netlify/functions/claude', {
     method: 'POST',
     headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -6833,7 +6833,7 @@ async function analyzeConv() {
     + 'Seja especifico e baseie tudo na conversa. Nao reproduza o texto literal, so analise e oriente.';
 
   try {
-    var r = await fetch('/.netlify/functions/anthropic', {
+    var r = await fetch('/.netlify/functions/claude', {
       method: 'POST',
       headers: {
         'x-api-key': key,
@@ -7869,16 +7869,22 @@ if (document.readyState === 'loading') {
 
 <script id="ai-proxy">
 (function(){
-  // Roteia as chamadas da IA pela funcao no servidor (/.netlify/functions/anthropic),
-  // que encaminha usando a SUA chave (x-api-key) configurada no CRM — evita o bloqueio/CORS
-  // da rede que causava o 504. A chave continua vindo do seu navegador; o servidor so repassa.
+  // A chave real fica no servidor (variavel ANTHROPIC_API_KEY no Netlify). Faz os guards de
+  // "configure a chave" passarem, mesmo sem chave no navegador.
+  try{
+    if(typeof window.cfg==='function'){
+      var _cfg=window.cfg;
+      window.cfg=function(k){ var v=_cfg(k); if(k==='anth' && !v) return 'server-proxy'; return v; };
+    }
+  }catch(e){}
+  // Redireciona as chamadas da Anthropic pra funcao segura no servidor (chave escondida)
   try{
     var _fetch=window.fetch;
     window.fetch=function(u,o){
       try{
         if(typeof u==='string' && u.indexOf('api.anthropic.com/v1/messages')>=0){
-          u='/.netlify/functions/anthropic';
-          if(o && o.headers){ try{ delete o.headers['anthropic-dangerous-direct-browser-access']; }catch(e){} }
+          u='/.netlify/functions/claude';
+          if(o && o.headers){ try{ delete o.headers['x-api-key']; delete o.headers['anthropic-dangerous-direct-browser-access']; }catch(e){} }
         }
       }catch(e){}
       return _fetch.call(this,u,o);
