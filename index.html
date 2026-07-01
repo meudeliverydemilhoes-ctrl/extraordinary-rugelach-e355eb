@@ -3408,7 +3408,7 @@ async function callAiChat(userMsg) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 1500,
+        max_tokens: 1000,
         messages: messages
       })
     });
@@ -6823,6 +6823,7 @@ async function analyzeConv() {
     'Voce e um especialista em vendas de alto ticket da Mentoria Delivery Pro (mentoria para donos de delivery, ticket acima de R$10mil). '
     + 'Analise a conversa de WhatsApp abaixo entre a equipe comercial (ATENDENTE) e um possivel cliente (LEAD).\n\n'
     + 'Transcript (mais recente no final):\n\n' + transcript_truncate(msgs, 12000) + '\n\n'
+    + 'IMPORTANTE: seja OBJETIVO e CONCISO — no maximo 2 frases curtas por secao (a secao 5 pode ter a mensagem completa). Isso e essencial pra resposta ser rapida.\n\n'
     + 'Responda em portugues brasileiro, direto e pratico, com estas secoes e marcadores claros:\n\n'
     + '1. RESUMO DO LEAD: quem e, que tipo de negocio tem e em que momento da conversa esta (2-3 frases).\n'
     + '2. TEMPERATURA E QUALIFICACAO: classifique como QUENTE, MORNO ou FRIO e explique. Diga o que ja sabemos e o que ainda falta descobrir (faturamento mensal, se e o dono/decisor, principal desafio, se ja agendou reuniao).\n'
@@ -6843,7 +6844,7 @@ async function analyzeConv() {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 2200,
+        max_tokens: 1100,
         messages: [{ role: 'user', content: prompt }]
       })
     });
