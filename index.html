@@ -3398,7 +3398,7 @@ async function callAiChat(userMsg) {
   }
 
   try {
-    var r = await fetch('https://api.anthropic.com/v1/messages', {
+    var r = await fetch('/.netlify/functions/anthropic', {
       method: 'POST',
       headers: {
         'x-api-key': key,
@@ -3798,7 +3798,7 @@ async function botGenerateReply(userMsg, jid, config) {
   var key = cfg('anth');
   if (!key) return null;
   try {
-    var r = await fetch('https://api.anthropic.com/v1/messages', {
+    var r = await fetch('/.netlify/functions/anthropic', {
       method: 'POST',
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -6532,7 +6532,7 @@ var iaData = { convAnalyses: [], scorecard: null, whatsapp: null, script: null, 
 async function claudeCall(systemPrompt, userPrompt, maxTokens) {
   var key = cfg('anth');
   if (!key) throw new Error('Configure sua Anthropic API key em Config');
-  var r = await fetch('https://api.anthropic.com/v1/messages', {
+  var r = await fetch('/.netlify/functions/anthropic', {
     method: 'POST',
     headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -6833,7 +6833,7 @@ async function analyzeConv() {
     + 'Seja especifico e baseie tudo na conversa. Nao reproduza o texto literal, so analise e oriente.';
 
   try {
-    var r = await fetch('https://api.anthropic.com/v1/messages', {
+    var r = await fetch('/.netlify/functions/anthropic', {
       method: 'POST',
       headers: {
         'x-api-key': key,
