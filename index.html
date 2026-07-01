@@ -2726,8 +2726,14 @@ function kpi(label, val, sub, icon, trend, trendLabel) {
 
 function renderDonut(individuais) {
   // Classificar contatos por "origem" baseado no JID/nome
-  var origens = { 'WhatsApp Direto': 0, 'Grupos': 0, 'Desconhecido': 0 };
+  var origens = { 'Formulário': 0, 'WhatsApp Direto': 0, 'Grupos': 0, 'Desconhecido': 0 };
+  // Quem veio de formulario: tem ficha (lead-info) marcada, ou nota [Formulario]
+  var _formLeads = {}, _notes = {};
+  try { _formLeads = JSON.parse(localStorage.getItem('meucrm_form_leads') || '{}'); } catch(e) {}
+  try { _notes = JSON.parse(localStorage.getItem('meucrm_hs_notes') || '{}'); } catch(e) {}
+  function _isForm(jid){ if(_formLeads[jid]) return true; var nn=_notes[jid]||[]; for(var i=0;i<nn.length;i++){ if((nn[i].text||'').indexOf('[Formulario]')>=0) return true; } return false; }
   individuais.forEach(c => {
+    if (_isForm(c.remoteJid)) { origens['Formulário']++; return; }
     var name = (c.pushName || '').toLowerCase();
     if (name.includes('insta') || name.includes('ig')) { origens['Instagram'] = (origens['Instagram']||0) + 1; }
     else if (name.includes('google') || name.includes('ads')) { origens['Google'] = (origens['Google']||0) + 1; }
@@ -7791,7 +7797,7 @@ if (document.readyState === 'loading') {
       }catch(e){}
     };
     (function(){
-      var SYNC_KEYS={'meucrm_tags':1,'meucrm_contact_tags':1,'meucrm_deal_values':1,'meucrm_hs_notes':1,'meucrm_pipe_manual':1,'meucrm_followups':1,'meucrm_pipe_cols':1};
+      var SYNC_KEYS={'meucrm_tags':1,'meucrm_contact_tags':1,'meucrm_deal_values':1,'meucrm_hs_notes':1,'meucrm_pipe_manual':1,'meucrm_followups':1,'meucrm_pipe_cols':1,'meucrm_form_leads':1};
       try{
         var _origSet=localStorage.setItem.bind(localStorage);
         localStorage.setItem=function(k,v){ var r=_origSet(k,v); try{ if(SYNC_KEYS[k]&&typeof window._sbKvUpsert==='function') window._sbKvUpsert(k); }catch(e){} return r; };
@@ -7967,7 +7973,9 @@ if (document.readyState === 'loading') {
     }
     return dig(jid);
   }
-  function update(){ var jid=getJid(); if(!jid){var b=document.getElementById('form-ficha');if(b)b.remove();return;} var ph=resolvePhone(jid); if(ph.length<8)return; fetchInfo(ph).then(function(info){ render(info); if(info){ensureNote(jid,info); if(info.nome){saveName(jid,info.nome); applyNames();}} }); }
+  function markFormLead(jid){ try{ var K='meucrm_form_leads'; var m=JSON.parse(localStorage.getItem(K)||'{}'); if(!m[jid]){ m[jid]=1; localStorage.setItem(K,JSON.stringify(m)); if(typeof window.scheduleKvSync==='function')window.scheduleKvSync(K); } }catch(e){} }
+  window.__markFormLead=markFormLead;
+  function update(){ var jid=getJid(); if(!jid){var b=document.getElementById('form-ficha');if(b)b.remove();return;} var ph=resolvePhone(jid); if(ph.length<8)return; fetchInfo(ph).then(function(info){ render(info); if(info){markFormLead(jid); ensureNote(jid,info); if(info.nome){saveName(jid,info.nome); applyNames();}} }); }
   if(typeof window.selectChat==='function'){ var o=window.selectChat; window.selectChat=function(){ var r=o.apply(this,arguments); setTimeout(update,350); return r; }; }
   var last=null;
   setInterval(function(){ var jid=getJid(); if(jid!==last){last=jid; setTimeout(update,200);} },1000);
@@ -8015,7 +8023,7 @@ if (document.readyState === 'loading') {
       var cur=(c.pushName||'').trim(); var raw=!cur||cur===c.remoteJid.split('@')[0]; if(!raw)continue;
       if(m[c.remoteJid]||miss[c.remoteJid]||missCache[c.remoteJid])continue;
       done++;
-      (function(jid){ var ph=resolvePhone(jid); fetchInfo(ph).then(function(info){ if(info&&info.nome){saveName(jid,info.nome); applyNames();} else { waNameFromMsgs(jid).then(function(wn){ if(wn){saveName(jid,wn); applyNames();} else {missCache[jid]=1; saveMiss(jid);} }); } }); })(c.remoteJid);
+      (function(jid){ var ph=resolvePhone(jid); fetchInfo(ph).then(function(info){ if(info&&info.nome){markFormLead(jid); saveName(jid,info.nome); applyNames();} else { waNameFromMsgs(jid).then(function(wn){ if(wn){saveName(jid,wn); applyNames();} else {missCache[jid]=1; saveMiss(jid);} }); } }); })(c.remoteJid);
     }
   }catch(e){} }
   setInterval(applyNames,6000);
