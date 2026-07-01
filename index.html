@@ -7869,21 +7869,16 @@ if (document.readyState === 'loading') {
 
 <script id="ai-proxy">
 (function(){
-  // Faz os guards de "configure a chave" passarem (a chave real fica no servidor)
-  try{
-    if(typeof window.cfg==='function'){
-      var _cfg=window.cfg;
-      window.cfg=function(k){ var v=_cfg(k); if(k==='anth' && !v) return 'server-proxy'; return v; };
-    }
-  }catch(e){}
-  // Redireciona chamadas da Anthropic para a funcao segura no servidor (chave fica escondida)
+  // Roteia as chamadas da IA pela funcao no servidor (/.netlify/functions/anthropic),
+  // que encaminha usando a SUA chave (x-api-key) configurada no CRM — evita o bloqueio/CORS
+  // da rede que causava o 504. A chave continua vindo do seu navegador; o servidor so repassa.
   try{
     var _fetch=window.fetch;
     window.fetch=function(u,o){
       try{
         if(typeof u==='string' && u.indexOf('api.anthropic.com/v1/messages')>=0){
-          u='/.netlify/functions/claude';
-          if(o && o.headers){ try{ delete o.headers['x-api-key']; delete o.headers['anthropic-dangerous-direct-browser-access']; }catch(e){} }
+          u='/.netlify/functions/anthropic';
+          if(o && o.headers){ try{ delete o.headers['anthropic-dangerous-direct-browser-access']; }catch(e){} }
         }
       }catch(e){}
       return _fetch.call(this,u,o);
